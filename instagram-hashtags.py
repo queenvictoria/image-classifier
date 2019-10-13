@@ -110,7 +110,8 @@ class InstagramScraper:
         # @TODO Load our items
         items = []
         for hashtag in hashtags:
-            for filename in Path('data').glob("**/media-%s-*.json" % (hashtag)):
+            for filename in \
+                    Path('data').glob("**/media-%s-*.json" % (hashtag)):
                 with open(filename, 'rb') as f:
                     data = json.load(f)
                     items.extend(data)
@@ -143,7 +144,8 @@ class InstagramScraper:
         min_size = 224
 
         for hashtag in hashtags:
-            for filename in Path('data').glob("**/media-%s-*.json" % (hashtag)):
+            for filename in \
+                    Path('data').glob("**/media-%s-*.json" % (hashtag)):
                 with open(filename, 'rb') as f:
                     data = json.load(f)
                     items.extend(data)
@@ -161,7 +163,8 @@ class InstagramScraper:
             else:
                 # Get the image > min_size
                 for image in node['node']['thumbnail_resources']:
-                    if image['config_width'] > min_size and image['config_height'] > min_size:
+                    if image['config_width'] > min_size \
+                            and image['config_height'] > min_size:
                         # download
                         print("%d%% Getting image %s liked %d times." %
                               (i*100/len(items), image_id, node['node']['edge_liked_by']['count']))
@@ -177,7 +180,8 @@ class InstagramScraper:
         # Load the data json files relating to the hashtags.
         items = []
         for hashtag in hashtags:
-            for filename in Path('data').glob("**/media-%s-*.json" % (hashtag)):
+            for filename in \
+                    Path('data').glob("**/media-%s-*.json" % (hashtag)):
                 with open(filename, 'rb') as f:
                     data = json.load(f)
                     items.extend(data)
@@ -202,17 +206,13 @@ class InstagramScraper:
                 # print(item)
                 # graphql.user.edge_followed_by
                 print("User %s named \"%s\" has %s followers." % (
-                    user_id, username, item['graphql']['user']['edge_followed_by']['count']))
+                    user_id, username,
+                    item['graphql']['user']['edge_followed_by']['count']))
                 # Save a user file.
                 with open(output_filename, 'w', encoding='utf-8') as f:
                     json.dump(item, f, ensure_ascii=False, indent=4)
 
     def get_media(self, hashtags):
-        if not hashtags:
-            with open('hashtag_list.txt') as f:
-                data = f.readlines()
-            hashtags = [x.strip() for x in data]
-
         max_times = 200/len(hashtags)
 
         for hashtag in hashtags:
@@ -222,7 +222,8 @@ class InstagramScraper:
             total = 0
 
             # Check if we already have files with an 'after'.
-            list_of_files = Path('data').glob("**/media-%s-*.json" % (hashtag))
+            list_of_files = \
+                Path('data').glob("**/media-%s-*.json" % (hashtag))
 
             latest_file = max(list_of_files, key=os.path.getctime)
             p, n = os.path.split(latest_file)
@@ -230,7 +231,8 @@ class InstagramScraper:
             after = a.replace('.json', '')
             print("Cursor is %s." % after)
 
-            list_of_files = Path('data').glob("**/media-%s-*.json" % (hashtag))
+            list_of_files = \
+                Path('data').glob("**/media-%s-*.json" % (hashtag))
             for filename in list_of_files:
                 # Count the number of items so far.
                 with open(filename, 'rb') as f:
@@ -272,7 +274,8 @@ class InstagramScraper:
                 # With the end_cursor as part of the name
                 print("%d%% Saving %d #%s items" %
                       (total*100/self.max_items, len(items), hashtag))
-                with open("data/media/media-%s-%s.json" % (hashtag, self.cursor), 'w',
+                with open("data/media/media-%s-%s.json"
+                          % (hashtag, self.cursor), 'w',
                           encoding='utf-8') as f:
                     json.dump(items, f, ensure_ascii=False, indent=4)
 
@@ -289,6 +292,10 @@ class InstagramScraper:
         hashtags = None
         if args.hashtags:
             hashtags = args.hashtags.split(',')
+        else:
+            with open('hashtag_list.txt') as f:
+                data = f.readlines()
+            hashtags = [x.strip() for x in data]
 
         self.ctx = ssl.create_default_context()
         self.ctx.check_hostname = False
