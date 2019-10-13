@@ -82,11 +82,34 @@ class InstagramScraper:
         res = urllib.request.urlopen(uri, context=self.ctx).read()
         return json.loads(res)
 
-    def get_owner(self, owner):
+    def get_owner(self, owner, cache=False):
+        # https://www.instagram.com/zinakaye/?__a=1
+        # graphql.user.edge_followed_by is the follower count
+
         pass
 
     def get_image(self, uri):
         pass
+
+    def get_username(self, user_id):
+        pass
+
+    def get_creators(self, hashtag):
+        """
+        @FIX REquires get_username to be built.
+        """
+
+        # Load the data json file.
+
+        # Filter data on uniq users.
+        # Iterate the filtered data looking for users.
+        for i in data:
+            user_id = data['node']['owner']['id']
+            user = get_username(user_id)
+
+            # Save a user file.
+            with open("data/user-%s.json" % (username), 'w', encoding='utf-8') as f:
+                json.dump(item, f, ensure_ascii=False, indent=4)
 
     def get_hashtags(self):
         self.ctx = ssl.create_default_context()
