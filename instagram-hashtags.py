@@ -128,8 +128,9 @@ class InstagramScraper:
             followers = user['graphql']['user']['edge_followed_by']['count']
             likes = node['node']['edge_liked_by']['count']
 
-            print("Likes %d creator @%s followers %d." %
-                  (likes, username, followers))
+            norm_likes = float(likes)/float(followers)
+            print("%d%% likes %d creator @%s followers %d." %
+                  ((norm_likes*100), likes, username, followers))
 
             # @TODO Calculate a class
             # @TODO Write out a result
