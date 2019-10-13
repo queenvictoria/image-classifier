@@ -88,6 +88,38 @@ class InstagramScraper:
 
         return username
 
+    def get_images(self, hashtags):
+        # Load the data json files relating to the hashtags.
+        items = []
+        min_size = 224
+
+        for hashtag in hashtags:
+            for filename in Path('data').glob("**/media-%s-*.json" % (hashtag)):
+                with open(filename, 'rb') as f:
+                    data = json.load(f)
+                    items.extend(data)
+
+        print("Downloading %d images for #%s." % (len(items), hashtags))
+
+        for i, node in enumerate(items):
+            image_id = node['node']['id']
+            output_filename = "data/images/%s/image-%s.jpg" % (
+                min_size, image_id)
+
+            if os.path.exists(output_filename):
+                print("%d%% Already retrieved image %s" %
+                      (i*100/len(items), image_id))
+            else:
+                # Get the image > min_size
+                for image in node['node']['thumbnail_resources']:
+                    if image['config_width'] > min_size and image['config_height'] > min_size:
+                        # download
+                        print("%d%% Getting image %s liked %d times." %
+                              (i*100/len(items), image_id, node['node']['edge_liked_by']['count']))
+                        urllib.request.urlretrieve(
+                            image['src'], output_filename)
+                        break
+
     def get_creators(self, hashtags):
         """
         Requires get_username.
@@ -137,6 +169,9 @@ class InstagramScraper:
             after = None
             items = []
             count = 0
+
+            # @FIX Check if we already have files with an 'after'. Are they
+            # alphabetical?
 
             while running:
                 res = self.get_hashtag(hashtag, after)
