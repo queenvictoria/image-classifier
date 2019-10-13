@@ -57,13 +57,31 @@ class InstagramScraper:
 
         return self.get_data(variables)
 
-    def get_user(self, username, cache=False):
-        print("Get user named %s." % (username))
+    def get_user_data(self, username, cache=False):
+        print("Get user @%s." % (username))
         uri = "https://www.instagram.com/%s/?__a=1" % (username)
         # graphql.user.edge_followed_by is the follower count
         res = urllib.request.urlopen(uri, context=self.ctx).read()
+        try:
+            return json.loads(res)
+        except:
+            return None
 
-        return json.loads(res)
+    def get_user(self, user_id, cache=True):
+        print("Get user #%s." % (user_id))
+        filename = "data/users/user-%s.json" % (user_id)
+        # @FIX Check that it doesn't exist already
+        if os.path.exists(filename):
+            with open(filename, 'rb') as f:
+                item = json.load(f)
+        else:
+            username = self.get_username_by_user_id(user_id)
+            item = self.get_user_data(username)
+            if item:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(item, f, ensure_ascii=False, indent=4)
+
+        return item
 
     def get_image(self, uri):
         pass
@@ -88,6 +106,36 @@ class InstagramScraper:
 
         return username
 
+    def get_dataset(self, hashtags):
+        # @TODO Load our items
+        items = []
+        for hashtag in hashtags:
+            for filename in Path('data').glob("**/media-%s-*.json" % (hashtag)):
+                with open(filename, 'rb') as f:
+                    data = json.load(f)
+                    items.extend(data)
+
+        print("%d items" % (len(items)))
+        # @TODO Score each item
+        for i, node in enumerate(items):
+            media_id = node['node']['id']
+            user_id = node['node']['owner']['id']
+            user = self.get_user(user_id)
+            if not user:
+                break
+                # continue
+            username = user['graphql']['user']['username']
+            followers = user['graphql']['user']['edge_followed_by']['count']
+            likes = node['node']['edge_liked_by']['count']
+
+            print("Likes %d creator @%s followers %d." %
+                  (likes, username, followers))
+
+            # @TODO Calculate a class
+            # @TODO Write out a result
+
+        pass
+
     def get_images(self, hashtags):
         # Load the data json files relating to the hashtags.
         items = []
@@ -103,8 +151,8 @@ class InstagramScraper:
 
         for i, node in enumerate(items):
             image_id = node['node']['id']
-            output_filename = "data/images/%s/image-%s.jpg" % (
-                min_size, image_id)
+            output_filename = "data/images/%s/%s/image-%s.jpg" % (
+                hashtag, min_size, image_id)
 
             if os.path.exists(output_filename):
                 print("%d%% Already retrieved image %s" %
@@ -147,7 +195,7 @@ class InstagramScraper:
                       (i*100/len(items), user_id))
                 username = self.get_username_by_user_id(user_id)
                 # Get user data
-                item = self.get_user(username)
+                item = self.get_user_data(username)
                 if not item:
                     continue
                 # print(item)
@@ -172,8 +220,7 @@ class InstagramScraper:
             count = 0
             total = 0
 
-            # @FIX Check if we already have files with an 'after'. Are they
-            # alphabetical?
+            # Check if we already have files with an 'after'.
             list_of_files = Path('data').glob("**/media-%s-*.json" % (hashtag))
 
             latest_file = max(list_of_files, key=os.path.getctime)
@@ -232,7 +279,7 @@ class InstagramScraper:
         parser = argparse.ArgumentParser(
             description='Generate labelled data set.')
         parser.add_argument('--stage', dest='stage',
-                            choices=['media', 'creators', 'images'],
+                            choices=['media', 'creators', 'images', 'dataset'],
                             help='run the media data collection stage')
         parser.add_argument('--hashtags',
                             help='specify which hashtags to use')
@@ -252,6 +299,8 @@ class InstagramScraper:
             self.get_creators(hashtags)
         if args.stage == 'images':
             self.get_images(hashtags)
+        if args.stage == 'dataset':
+            self.get_dataset(hashtags)
 
 
 if __name__ == '__main__':
