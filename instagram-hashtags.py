@@ -135,14 +135,16 @@ class InstagramScraper:
 
         # @FIX Filter data on uniq users.
         # Iterate the filtered data looking for users.
-        for node in items:
+        for i, node in enumerate(items):
             user_id = node['node']['owner']['id']
             output_filename = "data/users/user-%s.json" % (user_id)
             # @FIX Check that it doesn't exist already
             if os.path.exists(output_filename):
-                print("Already retrieved user %s" % (user_id))
+                print("%d%% Already retrieved user %s" %
+                      (i*100/len(items), user_id))
             else:
-                print("Getting user data for %s." % user_id)
+                print("%d%% Getting user data for %s." %
+                      (i*100/len(items), user_id))
                 username = self.get_username_by_user_id(user_id)
                 # Get user data
                 item = self.get_user(username)
@@ -167,11 +169,27 @@ class InstagramScraper:
         for hashtag in hashtags:
             running = True
             after = None
-            items = []
             count = 0
+            total = 0
 
             # @FIX Check if we already have files with an 'after'. Are they
             # alphabetical?
+            list_of_files = Path('data').glob("**/media-%s-*.json" % (hashtag))
+
+            latest_file = max(list_of_files, key=os.path.getctime)
+            p, n = os.path.split(latest_file)
+            t, h, a = n.split('-')
+            after = a.replace('.json', '')
+            print("Cursor is %s." % after)
+
+            list_of_files = Path('data').glob("**/media-%s-*.json" % (hashtag))
+            for filename in list_of_files:
+                # Count the number of items so far.
+                with open(filename, 'rb') as f:
+                    data = json.load(f)
+                    total += len(data)
+                    print("%d%% Already have %d items." %
+                          (total*100/self.max_items, total))
 
             while running:
                 res = self.get_hashtag(hashtag, after)
@@ -181,34 +199,34 @@ class InstagramScraper:
                 # "edge_hashtag_to_media":
                 # or "edge_hashtag_to_top_posts":
                 data = res['data']['hashtag']['edge_hashtag_to_media']
-
-                # Store the data
-                items.extend(data['edges'])
+                after = data['page_info']['end_cursor']
+                self.cursor = after
+                total += len(data['edges'])
 
                 if data['page_info']['has_next_page']:
-                    after = data['page_info']['end_cursor']
-                    self.cursor = after
-                    print("Getting more #%s (%d so far)" %
-                          (hashtag, len(items)))
+                    print("Fetching more #%s items." %
+                          (hashtag))
                 else:
                     print("Stopping (no more pages).")
                     running = False
 
-                if len(items) >= self.max_items:
-                    print("Stopping (%d items retrieved)." % len(items))
+                if total >= self.max_items:
+                    print("Stopping (%d items retrieved)." % total)
                     running = False
                 elif count >= max_times:
                     print("Rate limited (%d retrieved)." % count)
                     # Instead we could pause until the hour expires
                     running = False
 
-            # Save the data
-            print("Saving")
-            # Alternatively we could save every run as a separate file
-            # With the end_cursor as part of the name
-            with open("data/media/media-%s-%s.json" % (hashtag, self.cursor), 'w',
-                      encoding='utf-8') as f:
-                json.dump(items, f, ensure_ascii=False, indent=4)
+                # Store the data
+                items = data['edges']
+                # Save the data
+                # With the end_cursor as part of the name
+                print("%d%% Saving %d #%s items" %
+                      (total*100/self.max_items, len(items), hashtag))
+                with open("data/media/media-%s-%s.json" % (hashtag, self.cursor), 'w',
+                          encoding='utf-8') as f:
+                    json.dump(items, f, ensure_ascii=False, indent=4)
 
     def main(self):
         parser = argparse.ArgumentParser(
